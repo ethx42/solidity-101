@@ -19,11 +19,13 @@ contract CEOVote is ParseStrings{
         bool voted;
         bool canVote;
         uint256 candidateIndex;
+        uint cryptoAmount;
     }
 
-    struct Candidate{
+    struct Candidate {
         bytes32 name;
         uint256 voteCount;
+        uint etherStack;
     }
 
     mapping(address => Voter) public voters;
@@ -41,28 +43,45 @@ contract CEOVote is ParseStrings{
         _;
     }
     
-    constructor(bytes32 _candidateOne, bytes32 _candidateTwo){
+    constructor(bytes32 _candidateOne, bytes32 _candidateTwo) payable {
         admin = msg.sender;
         candidates[0] = Candidate({
             name: _candidateOne,
-            voteCount: 0
+            voteCount: 0,
+            etherStack: 0
         });
 
         candidates[1] = Candidate({
             name: _candidateTwo,
-            voteCount: 0
+            voteCount: 0,
+            etherStack: 0
         });
     }
 
-    function vote(uint256 _canditate) external{
+    event Received(address, uint);
+    receive() external payable {
+      require(msg.value >= 0 ether, "Must bet at least 1 wei");
+      emit Received(msg.sender, msg.value);
+    }
+
+    function getBalance() public view {
+      address(this).balance;
+    }
+
+    function vote(uint256 _canditate) external payable {
         Voter storage sender = voters[msg.sender];
+
         require(sender.canVote, "You cannot participate");
         require(_canditate < 2, "Invalid vote");
         require(!sender.voted, "Already voted");
+
         sender.voted = true;
         sender.candidateIndex = _canditate;
+        sender.cryptoAmount = msg.value;
 
-        candidates[_canditate].voteCount++;
+        candidates[_canditate].etherStack += msg.value;
+        candidates[_canditate].voteCount ++;
+
         if(candidates[_canditate].voteCount > 2 || block.number > startDate + 11520){
             finishVoting();
         }
@@ -70,19 +89,22 @@ contract CEOVote is ParseStrings{
 
     function giveRightToVote(address _voter) external onlyAdmin{
         require(!voters[_voter].voted, "Already voted");
+
         voters[_voter].canVote = true;
     }
 
     function finishVoting() internal{
         isActive = false;
     }
-    
-    function winningName() public view returns(bytes32){
+
+    function winningName() public view returns (Candidate memory) {
         require(!isActive, "Still active");
-        if(candidates[0].voteCount > candidates[1].voteCount){
-            return candidates[0].name;
-        }else{
-            return candidates[1].name;
+
+        if(candidates[0].etherStack > candidates[1].etherStack) {
+            return candidates[0];
+
+        } else {
+            return candidates[1];
         }
     }
 }
