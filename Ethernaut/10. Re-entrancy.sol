@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.10;
+pragma solidity ^0.8.10;
 interface IReentrance {
     function donate(address _to) external payable;
     function withdraw(uint _amount) external;
